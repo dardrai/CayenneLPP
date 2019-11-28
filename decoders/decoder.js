@@ -33,6 +33,10 @@
  *  Energy              3331    131     83      4           0.001kWh Unsigned MSB
  *  Direction           3332    132     84      2           1º Unsigned MSB
  *  Switch              3342    142     8E      1           0/1
+ *  PPM                 3343    143     8F      2           1 PPM unsigned
+ *  Range               3344    144     90      2           1 m unsigned
+ *  RGB                 3345    145     91      3           R: 255 G: 255 B: 255
+ *  HSB                 3346    146     92      6           Hue: 1.0 Sat 1.0 Brightnes 1.0
  * 
  */
 
@@ -65,6 +69,10 @@ function lppDecode(bytes) {
         134: {'size': 6, 'name': 'gyrometer', 'signed': true , 'divisor': 100},
         136: {'size': 9, 'name': 'gps', 'signed': true, 'divisor': [10000,10000,100]},
         142: {'size': 1, 'name': 'switch', 'signed': false, 'divisor': 1},
+		143: {'size': 2, 'name': 'ppm', 'signed': false, 'divisor': 1},
+		144: {'size': 2, 'name': 'range', 'signed': false, 'divisor': 1},
+		145: {'size': 3, 'name': 'rgb', 'signed': false, 'divisor': 1},
+		146: {'size': 6, 'name': 'hsb', 'signed': false, 'divisor': 1000},
     };
 
     function arrayToDecimal(stream, is_signed, divisor) {
@@ -116,6 +124,20 @@ function lppDecode(bytes) {
                     'latitude': arrayToDecimal(bytes.slice(i+0, i+3), type.signed, type.divisor[0]),
                     'longitude': arrayToDecimal(bytes.slice(i+3, i+6), type.signed, type.divisor[1]),
                     'altitude': arrayToDecimal(bytes.slice(i+6, i+9), type.signed, type.divisor[2])
+                };
+                break;
+			case 145:   // RGB
+				s_value = {
+                    'r': arrayToDecimal(bytes.slice(i+0, i+1), type.signed, type.divisor),
+                    'g': arrayToDecimal(bytes.slice(i+1, i+2), type.signed, type.divisor),
+                    'b': arrayToDecimal(bytes.slice(i+2, i+3), type.signed, type.divisor)
+                };
+                break;$
+			case 146:   // RGB
+				s_value = {
+                    'vue': arrayToDecimal(bytes.slice(i+0, i+2), type.signed, type.divisor),
+                    'sat': arrayToDecimal(bytes.slice(i+2, i+4), type.signed, type.divisor),
+                    'bri': arrayToDecimal(bytes.slice(i+4, i+6), type.signed, type.divisor)
                 };
                 break;
 

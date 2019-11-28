@@ -66,6 +66,10 @@ bool CayenneLPP::isType(uint8_t type) {
   if (LPP_GYROMETER == type) return true;
   if (LPP_GPS == type) return true;
   if (LPP_SWITCH == type) return true;
+  if (LPP_PPM == type) return true;
+  if (LPP_RANGE == type) return true;
+  if (LPP_RGB == type) return true;
+  if (LPP_HSB == type) return true;
   return false;
 }
 
@@ -94,6 +98,10 @@ const char * CayenneLPP::getTypeName(uint8_t type) {
   if (LPP_GYROMETER == type) return "gyrometer";
   if (LPP_GPS == type) return "gps";
   if (LPP_SWITCH == type) return "switch";
+  if (LPP_PPM == type) return "ppm";
+  if (LPP_RANGE == type) return "range";
+  if (LPP_RGB == type) return "rgb";
+  if (LPP_HSB == type) return "hsb";
   return 0;
 }
 
@@ -122,6 +130,10 @@ uint8_t CayenneLPP::getTypeSize(uint8_t type) {
   if (LPP_GYROMETER == type) return LPP_GYROMETER_SIZE;
   if (LPP_GPS == type) return LPP_GPS_SIZE;
   if (LPP_SWITCH == type) return LPP_SWITCH_SIZE;
+  if (LPP_PPM == type) return LPP_PPM_SIZE;
+  if (LPP_RANGE == type) return LPP_RANGE_SIZE;
+  if (LPP_RGB == type) return LPP_RGB_SIZE;
+  if (LPP_HSB == type) return LPP_HSB_SIZE;
   return 0;
 }
 
@@ -149,6 +161,10 @@ uint32_t CayenneLPP::getTypeMultiplier(uint8_t type) {
   if (LPP_UNIXTIME == type) return LPP_UNIXTIME_MULT;
   if (LPP_GYROMETER == type) return LPP_GYROMETER_MULT;
   if (LPP_SWITCH == type) return LPP_SWITCH_MULT;
+  if (LPP_PPM == type) return LPP_PPM_MULT;
+  if (LPP_RANGE == type) return LPP_RANGE_MULT;
+  if (LPP_RGB == type) return LPP_RGB_MULT;
+  if (LPP_HSB == type) return LPP_HSB_MULT;
   return 0;
 }
 
@@ -296,6 +312,54 @@ uint8_t CayenneLPP::addDirection(uint8_t channel, float value) {
 
 uint8_t CayenneLPP::addSwitch(uint8_t channel, uint32_t value) {
   return addField(LPP_SWITCH, channel, value);
+}
+
+uint8_t CayenneLPP::addRange(uint8_t channel, uint32_t value) {
+  return addField(LPP_RANGE, channel, value);
+}
+
+uint8_t CayenneLPP::addPPM(uint8_t channel, uint32_t value) {
+  return addField(LPP_PPM, channel, value);
+}
+
+uint8_t CayenneLPP::addRGB(uint8_t channel, uint8_t r, uint8_t g, uint8_t b)
+{
+  // check buffer overflow
+  if ((_cursor + LPP_RGB_SIZE + 2) > _maxsize) {
+    _error = LPP_ERROR_OVERFLOW;
+    return 0;
+  }
+  _buffer[_cursor++] = channel;
+  _buffer[_cursor++] = LPP_RGB;
+  _buffer[_cursor++] = r;
+  _buffer[_cursor++] = g;
+  _buffer[_cursor++] = b;
+ 
+
+  return _cursor;
+}
+
+uint8_t CayenneLPP::addHSB(uint8_t channel, float hue, float sat, float br)
+{
+  // check buffer overflow
+  if ((_cursor + LPP_HSB_SIZE + 2) > _maxsize) {
+    _error = LPP_ERROR_OVERFLOW;
+    return 0;
+  }
+  int16_t vhue = hue * LPP_HSB_MULT;
+  int16_t vsat = sat * LPP_HSB_MULT;
+  int16_t vbr = br * LPP_HSB_MULT;
+  
+  _buffer[_cursor++] = channel;
+  _buffer[_cursor++] = LPP_HSB;
+  _buffer[_cursor++] = vhue >> 8;
+  _buffer[_cursor++] = vhue;
+  _buffer[_cursor++] = vsat >> 8;
+  _buffer[_cursor++] = vsat;
+  _buffer[_cursor++] = vbr >> 8;
+  _buffer[_cursor++] = vbr;
+
+  return _cursor;
 }
 
 uint8_t CayenneLPP::addAccelerometer(uint8_t channel, float x, float y, float z) {
@@ -446,7 +510,21 @@ uint8_t CayenneLPP::decode(uint8_t *buffer, uint8_t len, JsonArray& root) {
     data["name"] = String(getTypeName(type));
 
     // Parse types
-    if (LPP_ACCELEROMETER == type || LPP_GYROMETER == type) {
+	if (LPP_RGB == type) {
+
+      JsonObject object = data.createNestedObject("value");
+      object["r"] = getValue(&buffer[index], 1, multiplier, is_signed);
+      object["g"] = getValue(&buffer[index+2], 1, multiplier, is_signed);
+      object["b"] = getValue(&buffer[index+3], 1, multiplier, is_signed);
+
+    } else if (LPP_HSB == type) {
+
+      JsonObject object = data.createNestedObject("value");
+      object["vue"] = getValue(&buffer[index], 2, multiplier, is_signed);
+      object["sat"] = getValue(&buffer[index+2], 2, multiplier, is_signed);
+      object["bri"] = getValue(&buffer[index+4], 2, multiplier, is_signed);
+
+    } else if (LPP_ACCELEROMETER == type || LPP_GYROMETER == type) {
 
       JsonObject object = data.createNestedObject("value");
       object["x"] = getValue(&buffer[index], 2, multiplier, is_signed);
@@ -512,7 +590,20 @@ uint8_t CayenneLPP::decodeTTN(uint8_t *buffer, uint8_t len, JsonObject& root) {
     String name = String(getTypeName(type)) + "_" + channel;
 
     // Parse types
-    if (LPP_ACCELEROMETER == type || LPP_GYROMETER == type) {
+	if (LPP_RGB == type) {
+      JsonObject object = root.createNestedObject(name);
+      object["r"] = getValue(&buffer[index], 1, multiplier, is_signed);
+      object["g"] = getValue(&buffer[index+2], 1, multiplier, is_signed);
+      object["b"] = getValue(&buffer[index+3], 1, multiplier, is_signed);
+
+    } else if (LPP_HSB == type) {
+
+      JsonObject object = root.createNestedObject(name);
+      object["vue"] = getValue(&buffer[index], 2, multiplier, is_signed);
+      object["sat"] = getValue(&buffer[index+2], 2, multiplier, is_signed);
+      object["bri"] = getValue(&buffer[index+4], 2, multiplier, is_signed);
+
+    } else if (LPP_ACCELEROMETER == type || LPP_GYROMETER == type) {
 
       JsonObject object = root.createNestedObject(name);
       object["x"] = getValue(&buffer[index], 2, multiplier, is_signed);
