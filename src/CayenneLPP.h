@@ -120,6 +120,7 @@ public:
   const char * getTypeName(uint8_t type);
   uint8_t decode(uint8_t *buffer, uint8_t size, JsonArray& root);
   uint8_t decodeTTN(uint8_t *buffer, uint8_t size, JsonObject& root);
+  uint8_t decodeRAW(uint8_t *buffer, uint8_t len, float* array);
 
   // Original LPPv1 data types
   uint8_t addDigitalInput(uint8_t channel, uint32_t value);

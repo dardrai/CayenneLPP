@@ -593,8 +593,8 @@ uint8_t CayenneLPP::decodeTTN(uint8_t *buffer, uint8_t len, JsonObject& root) {
 	if (LPP_RGB == type) {
       JsonObject object = root.createNestedObject(name);
       object["r"] = getValue(&buffer[index], 1, multiplier, is_signed);
-      object["g"] = getValue(&buffer[index+2], 1, multiplier, is_signed);
-      object["b"] = getValue(&buffer[index+3], 1, multiplier, is_signed);
+      object["g"] = getValue(&buffer[index+1], 1, multiplier, is_signed);
+      object["b"] = getValue(&buffer[index+2], 1, multiplier, is_signed);
 
     } else if (LPP_HSB == type) {
 
@@ -630,6 +630,79 @@ uint8_t CayenneLPP::decodeTTN(uint8_t *buffer, uint8_t len, JsonObject& root) {
     index += size;
 
   }
+
+  return count;
+
+}
+
+uint8_t CayenneLPP::decodeRAW(uint8_t *buffer, uint8_t len, float* array) {
+	uint8_t count = 0;
+	uint8_t arrayIndex = 0;
+  uint8_t index = 0;
+  
+  count++;
+
+  while ((index + 2) < len) {
+
+    // Get channel #
+    uint8_t channel = buffer[index++];
+    
+    // Get data type
+    uint8_t type = buffer[index++];
+    if (!isType(type)) {
+      _error = LPP_ERROR_UNKOWN_TYPE;
+      return 0;
+    }
+
+    // Type definition
+    uint8_t size = getTypeSize(type);
+    uint32_t multiplier = getTypeMultiplier(type);
+    bool is_signed = getTypeSigned(type);
+
+    // Check buffer size
+    if (index + size > len) {
+      _error = LPP_ERROR_OVERFLOW;
+      return 0;
+    }
+	
+    // Parse types
+	if (LPP_RGB == type) {
+		array[arrayIndex] = getValue(&buffer[index], 1, multiplier, is_signed);
+		array[++arrayIndex] = getValue(&buffer[index+1], 1, multiplier, is_signed);
+		array[++arrayIndex]	= getValue(&buffer[index+2], 1, multiplier, is_signed);	
+      
+    } else if (LPP_HSB == type) {
+
+     array[arrayIndex] = getValue(&buffer[index], 2, multiplier, is_signed);
+     array[++arrayIndex] = getValue(&buffer[index+2], 2, multiplier, is_signed);
+     array[++arrayIndex] = getValue(&buffer[index+4], 2, multiplier, is_signed);
+
+    } else if (LPP_ACCELEROMETER == type || LPP_GYROMETER == type) {
+
+    array[arrayIndex] = getValue(&buffer[index], 2, multiplier, is_signed);
+    array[++arrayIndex] = getValue(&buffer[index+2], 2, multiplier, is_signed);
+    array[++arrayIndex] = getValue(&buffer[index+4], 2, multiplier, is_signed);
+
+    } else if (LPP_GPS == type) {
+
+    array[arrayIndex] = getValue(&buffer[index], 3, 10000, is_signed);
+    array[++arrayIndex] = getValue(&buffer[index+3], 3, 10000, is_signed);
+    array[++arrayIndex] = getValue(&buffer[index+6], 3, 100, is_signed);
+
+    } else if (LPP_GENERIC_SENSOR == type || LPP_UNIXTIME == type) {
+
+      array[arrayIndex] = getValue32(&buffer[index], size);
+
+    } else {
+		array[arrayIndex] = getValue(&buffer[index], size, multiplier, is_signed);
+    }
+
+    index += size;
+    
+	arrayIndex++;
+
+  }
+
 
   return count;
 
