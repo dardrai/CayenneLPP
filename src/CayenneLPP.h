@@ -34,9 +34,7 @@
 #define LPP_GPS                         136   // 3 byte lon/lat 0.0001 °, 3 bytes alt 0.01 meter
 #define LPP_SWITCH                      142   // 1 byte, 0/1
 #define LPP_PPM                         143   // 2 bytes, 1 ppm unsigned
-#define LPP_RANGE                       144   // 2 bytes, 1 m unsigned
-#define LPP_RGB                         145   // 1 byte per RGB Color
-#define LPP_HSB                         146   // 2 bytes per hue, saturation, brightness - 0.001
+#define LPP_RGB                         144   // 1 byte per RGB Color
 
 // Only Data Size
 #define LPP_DIGITAL_INPUT_SIZE          1
@@ -64,9 +62,7 @@
 #define LPP_GPS_SIZE                    9
 #define LPP_SWITCH_SIZE                 1
 #define LPP_PPM_SIZE                    2
-#define LPP_RANGE_SIZE                  2
 #define LPP_RGB_SIZE                    3
-#define LPP_HSB_SIZE                    6
 
 // Multipliers
 #define LPP_DIGITAL_INPUT_MULT          1
@@ -95,9 +91,7 @@
 #define LPP_GPS_ALT_MULT                100
 #define LPP_SWITCH_MULT                 1
 #define LPP_PPM_MULT                    1
-#define LPP_RANGE_MULT                  1
 #define LPP_RGB_MULT                    1
-#define LPP_HSB_MULT                    1000
 
 #define LPP_ERROR_OK                    0
 #define LPP_ERROR_OVERFLOW              1
@@ -120,7 +114,6 @@ public:
   const char * getTypeName(uint8_t type);
   uint8_t decode(uint8_t *buffer, uint8_t size, JsonArray& root);
   uint8_t decodeTTN(uint8_t *buffer, uint8_t size, JsonObject& root);
-  uint8_t decodeRAW(uint8_t *buffer, uint8_t len, float* array);
 
   // Original LPPv1 data types
   uint8_t addDigitalInput(uint8_t channel, uint32_t value);
@@ -149,10 +142,8 @@ public:
   uint8_t addEnergy(uint8_t channel, float value);
   uint8_t addDirection(uint8_t channel, float value);
   uint8_t addSwitch(uint8_t channel, uint32_t value);
-  uint8_t addRange(uint8_t channel, uint32_t value);
   uint8_t addPPM(uint8_t channel, uint32_t value);
   uint8_t addRGB(uint8_t channel, uint8_t r, uint8_t g, uint8_t b);
-  uint8_t addHSB(uint8_t channel, float hue, float sat, float br);
 
 protected:
 

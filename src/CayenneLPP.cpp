@@ -67,9 +67,7 @@ bool CayenneLPP::isType(uint8_t type) {
   if (LPP_GPS == type) return true;
   if (LPP_SWITCH == type) return true;
   if (LPP_PPM == type) return true;
-  if (LPP_RANGE == type) return true;
   if (LPP_RGB == type) return true;
-  if (LPP_HSB == type) return true;
   return false;
 }
 
@@ -99,9 +97,7 @@ const char * CayenneLPP::getTypeName(uint8_t type) {
   if (LPP_GPS == type) return "gps";
   if (LPP_SWITCH == type) return "switch";
   if (LPP_PPM == type) return "ppm";
-  if (LPP_RANGE == type) return "range";
   if (LPP_RGB == type) return "rgb";
-  if (LPP_HSB == type) return "hsb";
   return 0;
 }
 
@@ -131,9 +127,7 @@ uint8_t CayenneLPP::getTypeSize(uint8_t type) {
   if (LPP_GPS == type) return LPP_GPS_SIZE;
   if (LPP_SWITCH == type) return LPP_SWITCH_SIZE;
   if (LPP_PPM == type) return LPP_PPM_SIZE;
-  if (LPP_RANGE == type) return LPP_RANGE_SIZE;
   if (LPP_RGB == type) return LPP_RGB_SIZE;
-  if (LPP_HSB == type) return LPP_HSB_SIZE;
   return 0;
 }
 
@@ -162,9 +156,7 @@ uint32_t CayenneLPP::getTypeMultiplier(uint8_t type) {
   if (LPP_GYROMETER == type) return LPP_GYROMETER_MULT;
   if (LPP_SWITCH == type) return LPP_SWITCH_MULT;
   if (LPP_PPM == type) return LPP_PPM_MULT;
-  if (LPP_RANGE == type) return LPP_RANGE_MULT;
   if (LPP_RGB == type) return LPP_RGB_MULT;
-  if (LPP_HSB == type) return LPP_HSB_MULT;
   return 0;
 }
 
@@ -314,10 +306,6 @@ uint8_t CayenneLPP::addSwitch(uint8_t channel, uint32_t value) {
   return addField(LPP_SWITCH, channel, value);
 }
 
-uint8_t CayenneLPP::addRange(uint8_t channel, uint32_t value) {
-  return addField(LPP_RANGE, channel, value);
-}
-
 uint8_t CayenneLPP::addPPM(uint8_t channel, uint32_t value) {
   return addField(LPP_PPM, channel, value);
 }
@@ -335,29 +323,6 @@ uint8_t CayenneLPP::addRGB(uint8_t channel, uint8_t r, uint8_t g, uint8_t b)
   _buffer[_cursor++] = g;
   _buffer[_cursor++] = b;
  
-
-  return _cursor;
-}
-
-uint8_t CayenneLPP::addHSB(uint8_t channel, float hue, float sat, float br)
-{
-  // check buffer overflow
-  if ((_cursor + LPP_HSB_SIZE + 2) > _maxsize) {
-    _error = LPP_ERROR_OVERFLOW;
-    return 0;
-  }
-  int16_t vhue = hue * LPP_HSB_MULT;
-  int16_t vsat = sat * LPP_HSB_MULT;
-  int16_t vbr = br * LPP_HSB_MULT;
-  
-  _buffer[_cursor++] = channel;
-  _buffer[_cursor++] = LPP_HSB;
-  _buffer[_cursor++] = vhue >> 8;
-  _buffer[_cursor++] = vhue;
-  _buffer[_cursor++] = vsat >> 8;
-  _buffer[_cursor++] = vsat;
-  _buffer[_cursor++] = vbr >> 8;
-  _buffer[_cursor++] = vbr;
 
   return _cursor;
 }
@@ -517,13 +482,6 @@ uint8_t CayenneLPP::decode(uint8_t *buffer, uint8_t len, JsonArray& root) {
       object["g"] = getValue(&buffer[index+2], 1, multiplier, is_signed);
       object["b"] = getValue(&buffer[index+3], 1, multiplier, is_signed);
 
-    } else if (LPP_HSB == type) {
-
-      JsonObject object = data.createNestedObject("value");
-      object["vue"] = getValue(&buffer[index], 2, multiplier, is_signed);
-      object["sat"] = getValue(&buffer[index+2], 2, multiplier, is_signed);
-      object["bri"] = getValue(&buffer[index+4], 2, multiplier, is_signed);
-
     } else if (LPP_ACCELEROMETER == type || LPP_GYROMETER == type) {
 
       JsonObject object = data.createNestedObject("value");
@@ -596,13 +554,6 @@ uint8_t CayenneLPP::decodeTTN(uint8_t *buffer, uint8_t len, JsonObject& root) {
       object["g"] = getValue(&buffer[index+1], 1, multiplier, is_signed);
       object["b"] = getValue(&buffer[index+2], 1, multiplier, is_signed);
 
-    } else if (LPP_HSB == type) {
-
-      JsonObject object = root.createNestedObject(name);
-      object["vue"] = getValue(&buffer[index], 2, multiplier, is_signed);
-      object["sat"] = getValue(&buffer[index+2], 2, multiplier, is_signed);
-      object["bri"] = getValue(&buffer[index+4], 2, multiplier, is_signed);
-
     } else if (LPP_ACCELEROMETER == type || LPP_GYROMETER == type) {
 
       JsonObject object = root.createNestedObject(name);
@@ -630,79 +581,6 @@ uint8_t CayenneLPP::decodeTTN(uint8_t *buffer, uint8_t len, JsonObject& root) {
     index += size;
 
   }
-
-  return count;
-
-}
-
-uint8_t CayenneLPP::decodeRAW(uint8_t *buffer, uint8_t len, float* array) {
-	uint8_t count = 0;
-	uint8_t arrayIndex = 0;
-  uint8_t index = 0;
-  
-  count++;
-
-  while ((index + 2) < len) {
-
-    // Get channel #
-    uint8_t channel = buffer[index++];
-    
-    // Get data type
-    uint8_t type = buffer[index++];
-    if (!isType(type)) {
-      _error = LPP_ERROR_UNKOWN_TYPE;
-      return 0;
-    }
-
-    // Type definition
-    uint8_t size = getTypeSize(type);
-    uint32_t multiplier = getTypeMultiplier(type);
-    bool is_signed = getTypeSigned(type);
-
-    // Check buffer size
-    if (index + size > len) {
-      _error = LPP_ERROR_OVERFLOW;
-      return 0;
-    }
-	
-    // Parse types
-	if (LPP_RGB == type) {
-		array[arrayIndex] = getValue(&buffer[index], 1, multiplier, is_signed);
-		array[++arrayIndex] = getValue(&buffer[index+1], 1, multiplier, is_signed);
-		array[++arrayIndex]	= getValue(&buffer[index+2], 1, multiplier, is_signed);	
-      
-    } else if (LPP_HSB == type) {
-
-     array[arrayIndex] = getValue(&buffer[index], 2, multiplier, is_signed);
-     array[++arrayIndex] = getValue(&buffer[index+2], 2, multiplier, is_signed);
-     array[++arrayIndex] = getValue(&buffer[index+4], 2, multiplier, is_signed);
-
-    } else if (LPP_ACCELEROMETER == type || LPP_GYROMETER == type) {
-
-    array[arrayIndex] = getValue(&buffer[index], 2, multiplier, is_signed);
-    array[++arrayIndex] = getValue(&buffer[index+2], 2, multiplier, is_signed);
-    array[++arrayIndex] = getValue(&buffer[index+4], 2, multiplier, is_signed);
-
-    } else if (LPP_GPS == type) {
-
-    array[arrayIndex] = getValue(&buffer[index], 3, 10000, is_signed);
-    array[++arrayIndex] = getValue(&buffer[index+3], 3, 10000, is_signed);
-    array[++arrayIndex] = getValue(&buffer[index+6], 3, 100, is_signed);
-
-    } else if (LPP_GENERIC_SENSOR == type || LPP_UNIXTIME == type) {
-
-      array[arrayIndex] = getValue32(&buffer[index], size);
-
-    } else {
-		array[arrayIndex] = getValue(&buffer[index], size, multiplier, is_signed);
-    }
-
-    index += size;
-    
-	arrayIndex++;
-
-  }
-
 
   return count;
 
