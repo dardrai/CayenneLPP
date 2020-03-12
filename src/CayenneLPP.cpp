@@ -479,8 +479,8 @@ uint8_t CayenneLPP::decode(uint8_t *buffer, uint8_t len, JsonArray& root) {
 
       JsonObject object = data.createNestedObject("value");
       object["r"] = getValue(&buffer[index], 1, multiplier, is_signed);
-      object["g"] = getValue(&buffer[index+2], 1, multiplier, is_signed);
-      object["b"] = getValue(&buffer[index+3], 1, multiplier, is_signed);
+      object["g"] = getValue(&buffer[index+1], 1, multiplier, is_signed);
+      object["b"] = getValue(&buffer[index+2], 1, multiplier, is_signed);
 
     } else if (LPP_ACCELEROMETER == type || LPP_GYROMETER == type) {
 
